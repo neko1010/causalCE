@@ -25,7 +25,7 @@ private.df = dat%>%
 
 # The matchit command will find matched pairs 
 matching <- matchit(CE ~ elevation+ distCity + distPublic + 
-                      + distTrust + distRoad + distGAP12,
+                      + distTrust + distRoad,
                     data = private.df,
                     distance = "mahalanobis", # using mahalanobis distances
                     method = "genetic", 
@@ -33,12 +33,11 @@ matching <- matchit(CE ~ elevation+ distCity + distPublic +
                     replace = TRUE, # match with replacement, so control units are allowed to 
                     # be matched to several treated units. If FALSE, each obs. can only
                     # be matched to one other
-                    caliper=c(elevation=0.4, # The caliper determines how similar the obs. have to be
-                              distPublic = 0.4,
-                              distCity = 0.4,
-                              distTrust = 0.4,
-                              distRoad= 0.4,
-                              distGAP12 = 0.4))  ## The caliper = "how many std dev" apart (rel. to sd
+                    caliper=c(elevation=0.2, # The caliper determines how similar the obs. have to be
+                              distPublic = 0.2,
+                              distCity = 0.2,
+                              distTrust = 0.2,
+                              distRoad = 0.2))  ## The caliper = "how many std dev" apart (rel. to sd
 # of the original data) obs. are allowed to be.
 
 ## matches
@@ -101,18 +100,9 @@ gg.road= ggplot(private.df, aes(x =distRoad,   ## (change to "df" to see pre-mat
   guides(color = "none") +
   labs(x = "Distance to road") + theme_bw()
 
-gg.gap= ggplot(private.df, aes(x =distGAP12,   ## (change to "df" to see pre-matching balance).
-                           color = as.factor(CE), 
-                           fill=as.factor(CE))) +
-  geom_density(alpha=0.4) +
-  scale_color_manual(values=c( "skyblue3", "orangered3"))+
-  scale_fill_manual(values=c( "skyblue3", "orangered3"))+
-  guides(color = "none") +
-  labs(x = "Distance to Gap 1 or 2") + theme_bw()
-
-prematch.plots = ggarrange(gg.elev, gg.city, gg.public, gg.trust, gg.road, gg.gap,
+prematch.plots = ggarrange(gg.elev, gg.city, gg.public, gg.trust, gg.road,
                            labels = c("Elevation", "Distance city", 
-                                      "Dist public land","Dist land trust", "Dist road", "Dist GAP"),
+                                      "Dist public land","Dist land trust", "Dist road"),
                            ncol = 3, nrow = 2)
 prematch.plots
 
@@ -163,19 +153,10 @@ match.road= ggplot(matched.df, aes(x =distRoad,   ## (change to "df" to see pre-
   guides(color = "none") +
   labs(x = "Distance to road") + theme_bw()
 
-match.gap= ggplot(matched.df, aes(x =distGAP12,   ## (change to "df" to see pre-matching balance).
-                           color = as.factor(CE), 
-                           fill=as.factor(CE))) +
-  geom_density(alpha=0.4) +
-  scale_color_manual(values=c("yellow", "purple"))+
-  scale_fill_manual(values=c( "yellow", "purple"))+
-  guides(color = "none") +
-  labs(x = "Distance to GAP 1 or 2") + theme_bw()
-
 match.plots = ggarrange(match.elev, match.city, 
-                        match.public, match.trust, match.road, match.gap,
+                        match.public, match.trust, match.road,
                           labels = c("Elevation","Distance city", 
-                                     "Dist public land","Dist land trust", "Dist road", "Dist GAP"),
+                                     "Dist public land","Dist land trust", "Dist road"),
                            ncol = 3, nrow = 2)
 match.plots
 
@@ -369,12 +350,4 @@ pp_check(did.ce.full)
 #plot(did.ce)
 #pp_check(did.ce)
 
-## these are broken
-before.trt <- as.numeric(did.ce$coefficients['Intercept'] +  did.ce$coefficients['CE1']) # preperiod for treated
-before.trt
-# mean outcome for treated unit in the post-treatment period
-after_treatment <- as.numeric(sum( did.ce$coefficients))
-after_treatment
-# diff-in-diff estimate
-diff_diff <- as.numeric(did_beta$coefficients['CE:post'])
-diff_diff
+

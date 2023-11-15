@@ -186,7 +186,8 @@ library(brms)
 ## Time invariant covs
 otherCovs = c("system.index", "CE", "huc12", "huc12public", "GAP", "year_est", "ceID", "elevation", 
                 "slope", "flowAcc", "distCity", "distTrust", "distRoad", "distPublic", "mesic.change")
-dat.invar = matched.df[otherCovs]
+#dat.invar = matched.df[otherCovs]
+dat.invar = private.df[otherCovs] ## DiD only - no matching
 create_df = function(data, year){
   df.mesic  = data %>% select(contains(paste0("X", as.character(year))))
   df.spei = data %>% select(contains(paste0("spei", as.character(year))))
@@ -203,23 +204,23 @@ years = seq(2004, 2020)
 
 ## FIGURE OUT HOW TO DO THIS DYNAMICALLY!
 ##years.df = do.call(create_df, args = c(dat, years))
-dat.2004 = cbind(dat.invar, create_df(matched.df, 2004))
-dat.2005 = cbind(dat.invar, create_df(matched.df, 2005))
-dat.2006 = cbind(dat.invar, create_df(matched.df, 2006))
-dat.2007 = cbind(dat.invar, create_df(matched.df, 2007))
-dat.2008 = cbind(dat.invar, create_df(matched.df, 2008))
-dat.2009 = cbind(dat.invar, create_df(matched.df, 2009))
-dat.2010 = cbind(dat.invar, create_df(matched.df, 2010))
-dat.2011 = cbind(dat.invar, create_df(matched.df, 2011))
-dat.2012 = cbind(dat.invar, create_df(matched.df, 2012))
-dat.2013 = cbind(dat.invar, create_df(matched.df, 2013))
-dat.2014 = cbind(dat.invar, create_df(matched.df, 2014))
-dat.2015 = cbind(dat.invar, create_df(matched.df, 2015))
-dat.2016 = cbind(dat.invar, create_df(matched.df, 2016))
-dat.2017 = cbind(dat.invar, create_df(matched.df, 2017))
-dat.2018 = cbind(dat.invar, create_df(matched.df, 2018))
-dat.2019 = cbind(dat.invar, create_df(matched.df, 2019))
-dat.2020 = cbind(dat.invar, create_df(matched.df, 2020))
+dat.2004 = cbind(dat.invar, create_df(private.df, 2004))
+dat.2005 = cbind(dat.invar, create_df(private.df, 2005))
+dat.2006 = cbind(dat.invar, create_df(private.df, 2006))
+dat.2007 = cbind(dat.invar, create_df(private.df, 2007))
+dat.2008 = cbind(dat.invar, create_df(private.df, 2008))
+dat.2009 = cbind(dat.invar, create_df(private.df, 2009))
+dat.2010 = cbind(dat.invar, create_df(private.df, 2010))
+dat.2011 = cbind(dat.invar, create_df(private.df, 2011))
+dat.2012 = cbind(dat.invar, create_df(private.df, 2012))
+dat.2013 = cbind(dat.invar, create_df(private.df, 2013))
+dat.2014 = cbind(dat.invar, create_df(private.df, 2014))
+dat.2015 = cbind(dat.invar, create_df(private.df, 2015))
+dat.2016 = cbind(dat.invar, create_df(private.df, 2016))
+dat.2017 = cbind(dat.invar, create_df(private.df, 2017))
+dat.2018 = cbind(dat.invar, create_df(private.df, 2018))
+dat.2019 = cbind(dat.invar, create_df(private.df, 2019))
+dat.2020 = cbind(dat.invar, create_df(private.df, 2020))
 
 
 ## combine to one wild df
