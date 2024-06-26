@@ -65,7 +65,8 @@ acs2020 = rbind(idaho2020, mt2020) %>%
 
 #setwd("~/BSU/diss/ch3/")
 
-dat = read.csv("../data/sampsFull.csv")
+#dat = read.csv("../data/sampsFull.csv")
+dat = read.csv("../data/sampsFullValue.csv")
 
 ## create a difference varaible for distinguishing pixels w the most change
 dat = dat %>%
@@ -85,6 +86,11 @@ private.df = dat%>%
 private.df = merge(private.df, acs2009)
 private.df = merge(private.df, acs2020)
 
+## Drop rows w missingvalue estimates
+private.df = private.df %>%
+	drop_na(value) %>%
+	rename(landValue = value) 
+
 ## Create variable for pop change
 private.df = private.df %>%
   mutate(pop.delta = pop2020 - pop2009)
@@ -95,7 +101,7 @@ library(brms)
   
 ## Time invariant covs
 covs = c("system.index", "CE", "pop.delta", "income2009", "huc4", "huc8",
-              "huc12", "huc12public", "GAP", "year_est", "ceID", "elevation", 
+              "huc12", "huc12public", "GAP", "year_est", "ceID", "elevation", "landValue",
                 "slope", "flowAcc", "distCity", "distTrust", "distRoad", "distPublic", "distGAP12", "mesic.change")
 dev.df = private.df%>%
   select(contains("dev"), all_of(covs))
@@ -130,13 +136,15 @@ panel$distRoad.std = scale(panel$distRoad)
 panel$distGAP12.std = scale(panel$distGAP12)
 panel$income2009.std = scale(panel$income2009)
 panel$pop.delta.std = scale(panel$pop.delta)
+panel$value.std = scale(panel$landValue)
 
 ## Priors
 priors.full = get_prior(dev ~ CE*post + elevation.std + slope.std + distCity.std +
-                        distPublic.std + distRoad.std + distGAP12.std + income2009.std +
-                         # pop.delta.std +  (1|year) + (1 |huc12),
+                        distPublic.std + distRoad.std + distGAP12.std + income2009.std + value.std +
+                         pop.delta.std +  (1|year) + (1 |huc12),
                          # pop.delta.std +  (1|year) + (1 |huc4),
-                          pop.delta.std +  (1|year) + (1 |huc8),
+                         # pop.delta.std +  (1|year) + (1 |huc8),
+                         # pop.delta.std +  year + huc12,
                         data = panel, family = 'binomial')
 
 priors.full$prior[1:18] = "normal (0,1)"
@@ -147,10 +155,11 @@ panel.samp = panel %>% sample_frac(0.2)
 # implement model
 ## Choose one year - am I capturing effect and spillovers
 did.dev.full <- brm(dev ~ CE*post + elevation.std + slope.std + distCity.std +
-                     distPublic.std + distRoad.std + distGAP12.std + income2009.std +
-                     #pop.delta.std +  (1|year) + (1 |huc12),
+                     distPublic.std + distRoad.std + distGAP12.std + income2009.std + value.std +
+                     #pop.delta.std +  year + huc12,
+                     pop.delta.std +  (1|year) + (1 |huc12),
                      #pop.delta.std +  (1|year) + (1 |huc4),
-                     pop.delta.std +  (1|year) + (1 |huc8),
+                     #pop.delta.std +  (1|year) + (1 |huc8),
               	     data = panel.samp,
               	     #family='beta',
               	     family=bernoulli(),
@@ -158,7 +167,7 @@ did.dev.full <- brm(dev ~ CE*post + elevation.std + slope.std + distCity.std +
               		control = list(adapt_delta = 0.999,max_treedepth = 15), ## lower to trial
               		cores=4,
               		chains = 4, ## lower to trial
-              		iter=2000## lower to trial
+              		iter=8000## lower to trial
 )
 
 
@@ -168,5 +177,5 @@ pp_check(did.dev.full)
 r2 = bayes_R2(did.dev.full)
 r2
 
-save.image(file = "didDevHUC8.RData")
+save.image(file = "didDev8k.RData")
 

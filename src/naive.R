@@ -10,7 +10,8 @@ library(sf)
 
 #setwd("~/BSU/diss/ch3/")
 
-dat = read.csv("../data/sampsFull.csv")
+#dat = read.csv("../data/sampsFull.csv")
+dat = read.csv("../data/sampsFullValue.csv")
 
 ## create a difference varaible for distinguishing pixels w the most change
 dat = dat %>%
@@ -136,7 +137,7 @@ naive <- brm(outcome ~ post + flowAcc.std + slope.std + spei.std +  (1|year) + (
               control = list(adapt_delta = 0.999,max_treedepth = 15), ## lower to trial
               cores=4,
               chains = 4, ## lower to trial
-              iter=2000## lower to trial
+              iter=8000## lower to trial
 )
 
 summary(naive)
@@ -145,6 +146,6 @@ pp_check(naive)
 r2 = bayes_R2(naive)
 r2
 
-save.image(file = "naiveNOelev.RData")
+save.image(file = "naiveNOelev8k.RData")
 
   

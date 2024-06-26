@@ -65,7 +65,8 @@ acs2020 = rbind(idaho2020, mt2020) %>%
 
 #setwd("~/BSU/diss/ch3/")
 
-dat = read.csv("../data/sampsFull.csv")
+#dat = read.csv("../data/sampsFull.csv")
+dat = read.csv("../data/sampsFullValue.csv")
 
 ## create a difference varaible for distinguishing pixels w the most change
 dat = dat %>%
@@ -80,6 +81,10 @@ dat = dat %>%
 private.df = dat%>% 
   filter(constant < 102) %>%
   mutate(CE = ifelse(constant == 100, 0, 1))
+
+## Drop rows w missingvalue estimates
+private.df = private.df %>%
+	drop_na(value) 
 
 ## merge w acs variables
 private.df = merge(private.df, acs2009)
@@ -177,71 +182,27 @@ panel$flowAcc.std = scale(panel$flowAcc)
 panel$slope.std = scale(panel$slope)
 panel$spei.std = scale(panel$spei)
 
-## explore for easements w positive and negative effects.
-panel.ce = panel %>% 
-  filter(CE == 1 & post ==1)
-
-#ggplot(data = panel.ce, mapping = aes(x = year, y = mesic09)) +
-#  geom_boxplot()+
-#  geom_point(mapping = aes(x = year, y = spei.std))
-
-plot(panel.ce$year, panel.ce$mesic09, main = "Treated")
-
-panel.NOce = panel %>% 
-  filter(CE == 0)
-
-plot(panel.NOce$year, panel.NOce$mesic09, main = "Control")
-
-panel.ce.pre = panel %>%
-  filter(CE ==1 & post == 0)
-
-plot(panel.ce.pre$year, panel.ce.pre$mesic09, main = "Not yet treated")
-
-panel.NOce.ANDpre = panel %>%
-  filter(post == 0)
-
-plot(panel.NOce.ANDpre$year, panel.NOce.ANDpre$mesic09, main = "Control or not yet treated")
-
-## sort the CE df based on mesic change and plot 5 examples of high and low change
-high.change = c(21505, 23329, 29430, 24995, 25595)
-low.change = c(29138, 21884, 23711, 23198, 26555)
-
-high.sbst = subset(panel%>%filter(CE == 1), system.index %in% high.change)
-low.sbst = subset(panel%>%filter(CE == 1), system.index %in% low.change)
-
-## plot these
-gg.high = ggplot(high.sbst, mapping = aes(x = year, y = mesic09, color = as.factor(system.index))) +
-  geom_point() +
-  geom_line(aes(group = as.factor(system.index))) +
-  geom_vline(aes(xintercept = as.factor(high.sbst$year_est), color = as.factor(system.index)))
-  
-gg.high + ggtitle("Postive mesic veg change")
-
-gg.low = ggplot(low.sbst, mapping = aes(x = year, y = mesic09, color = as.factor(system.index))) +
-  geom_point() +
-  geom_line(aes(group = as.factor(system.index))) +
-  geom_vline(aes(xintercept = as.factor(low.sbst$year_est), color = as.factor(system.index)))
-
-gg.low + ggtitle("Negative mesic veg change")
-
 ## Priors
 #priors.full = get_prior(outcome ~ CE*post + elevation.std + flowAcc.std + slope.std 
 priors.full = get_prior(outcome ~ CE*post + flowAcc.std + slope.std 
-                        + spei.std +  (1|year) + (1 |huc12),
-                        #+ spei.std +  (1|year) + (1 |huc4),
+                        #+ spei.std +  (1|year) + (1 |huc12),
+                        #+ spei.std +  year,  #+ huc12, #fixed effects
+                        + spei.std + (1|year) + (1 |huc12),
                         data = panel, family = 'beta')
 
-priors.full$prior[1:8] = "normal (0,1)"
-priors.full$prior[10:14] = "normal (0,1)"
-hist(rnorm(1000, 0,1))
+priors.full$prior[1:9] = "normal (0,1)"
+priors.full$prior[11:14] = "normal (0,1)"
+#hist(rnorm(1000, 0,1))
 
 ## randomly sample the panel
 panel.samp = panel %>% sample_frac(0.2)
 
 # implement model
 ## Choose one year - am I capturing effect and spillovers
-#did.ce.private <- brm(outcome ~ CE*post + elevation.std + flowAcc.std + slope.std + spei.std +  (1|year) + (1 |huc12),
-did.ce.private <- brm(outcome ~ CE*post + flowAcc.std + slope.std + spei.std +  (1|year) + (1 |huc12),
+did.ce.private <- brm(outcome ~ CE*post +  flowAcc.std + slope.std + spei.std + (1|year) + (1 |huc12), #including value
+#did.ce.private <- brm(outcome ~ CE*post + elevation.std + flowAcc.std + slope.std + spei.std +  year, # year FE, no HUC units, include elev
+#did.ce.private <- brm(outcome ~ CE*post + flowAcc.std + slope.std + spei.std +  (1|year) + (1 |huc12),
+#did.ce.private <- brm(outcome ~ CE*post + flowAcc.std + slope.std + spei.std +  year + huc12, #fixed effects
 #did.ce.private <- brm(outcome ~ CE*post + elevation.std + flowAcc.std + slope.std + spei.std +  (1|year) + (1 |huc4),
               data = panel.samp,
               family=Beta(),
@@ -250,7 +211,7 @@ did.ce.private <- brm(outcome ~ CE*post + flowAcc.std + slope.std + spei.std +  
               cores=4,
               #chains = 4, ## lower to trial
               chains = 4, ## lower to trial
-              iter=2000## lower to trial
+              iter=8000## lower to trial
               #iter=4000 ## lower to trial
 )
 
@@ -260,16 +221,5 @@ pp_check(did.ce.private)
 r2 = bayes_R2(did.ce.private)
 r2
 
-save(did.ce.private, file = "didOnlyPrivateNOelev.RData")
+save(did.ce.private, file = "didOnlyPrivate8k.RData")
 
-### k fold cross validation
-#fit.val = kfold(did.ce.private, save_fits = T, chains = 1)# default K = 10
-#predict.val = kfold_predict(fit.val, method = "predict")
-#MAE = function(y, yrep){
-#  yrep.mean = colMeans(yrep)
-#  mean(abs(yrep.mean - y))
-#  }
-#  
-#mae = MAE(predict.val$y, predict.val$yrep)
-#print('MAE = ', mae)
-  

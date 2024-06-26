@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -J didPrivate 
+#SBATCH -J didPrivateMatch8k 
 #SBATCH -N 1
 #SBATCH -n 48
 #SBATCH -o ../slurmtemp/.o%j
 #SBATCH -p bsudfq
-#SBATCH -t 24:00:00
+#SBATCH -t 96:00:00
 
 # Activate your environment
 ~/.bashrc

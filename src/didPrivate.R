@@ -63,13 +63,16 @@ acs2020 = rbind(idaho2020, mt2020) %>%
 
 #setwd("~/BSU/diss/ch3/")
 
-dat = read.csv("../data/sampsFull.csv")
+#dat = read.csv("../data/sampsFull.csv")
+dat = read.csv("../data/sampsFullValue.csv")
 
 ## create a difference varaible for distinguishing pixels w the most change
 dat = dat %>%
   mutate(mesic.change = X202009_mesic - X200409_mesic) %>%
   mutate(huc4 = substr(huc12, 1, 4)) %>% 
   mutate(huc8 = substr(huc12, 1, 8)) 
+
+
 
 ## "constant" is the tenure indicator, where 100 is private no easement, 
 ## 101 private w easement, 102 fed (misc), 103 state, 120 BLM, 121 USFS 
@@ -85,12 +88,13 @@ private.df = merge(private.df, acs2020)
 
 ## Create variable for pop change
 private.df = private.df %>%
-  mutate(pop.delta = pop2020 - pop2009)
+  mutate(pop.delta = pop2020 - pop2009)%>%
+  drop_na(value) # drop na
 
 # The matchit command will find matched pairs 
 matching <- matchit(CE ~ elevation+ distCity + distPublic + 
                       distTrust + distRoad + distGAP12 +
-                      pop.delta + income2009,
+                      pop.delta + income2009 + value,
                     data = private.df,
                     distance = "mahalanobis", # using mahalanobis distances
                     #method = "genetic", 
@@ -105,7 +109,8 @@ matching <- matchit(CE ~ elevation+ distCity + distPublic +
                               distRoad= 0.4,
                               distGAP12 = 0.4,
                               pop.delta = 0.4,
-                              income2009 = 0.4))  ## The caliper = "how many std dev" apart (rel. to sd
+                              income2009 = 0.4,
+			      value = 0.4))  ## The caliper = "how many std dev" apart (rel. to sd
 # of the original data) obs. are allowed to be.
 
 ## matches
@@ -195,12 +200,20 @@ gg.pop= ggplot(private.df, aes(x =pop.delta,   ## (change to "df" to see pre-mat
   guides(color = "none") +
   labs(x = "Population change") + theme_bw()
 
+gg.val = ggplot(private.df, aes(x =value,   ## (change to "df" to see pre-matching balance).
+                               color = as.factor(CE), 
+                               fill=as.factor(CE))) +
+  geom_density(alpha=0.4) +
+  scale_color_manual(values=c( "skyblue3", "orangered3"))+
+  scale_fill_manual(values=c( "skyblue3", "orangered3"))+
+  guides(color = "none") +
+  labs(x = "Value") + theme_bw()
 
 
-prematch.plots = ggarrange(gg.elev, gg.city, gg.public, gg.trust, gg.road, gg.gap, gg.income, gg.pop,
+prematch.plots = ggarrange(gg.elev, gg.city, gg.public, gg.trust, gg.road, gg.gap, gg.income, gg.pop, gg.val,
                            labels = c("Elevation", "Distance city", 
                                       "Dist public land","Dist land trust", 
-                                      "Dist road", "Dist GAP", "Income 2009", "Pop change"),
+                                      "Dist road", "Dist GAP", "Income 2009", "Pop change", "Value"),
                            ncol = 3, nrow = 3)
 prematch.plots
 
@@ -278,12 +291,21 @@ match.pop= ggplot(matched.df, aes(x =pop.delta,   ## (change to "df" to see pre-
   guides(color = "none") +
   labs(x = "Population change") + theme_bw()
 
+match.val = ggplot(matched.df, aes(x =value,   ## (change to "df" to see pre-matching balance).
+                               color = as.factor(CE), 
+                               fill=as.factor(CE))) +
+  geom_density(alpha=0.4) +
+  scale_color_manual(values=c( "yellow", "purple"))+
+  scale_fill_manual(values=c( "yellow", "purple"))+
+  guides(color = "none") +
+  labs(x = "Value") + theme_bw()
+
 match.plots = ggarrange(match.elev, match.city, 
                         match.public, match.trust, match.road, match.gap,
-                        match.income, match.pop,
+                        match.income, match.pop, match.val,
                           labels = c("Elevation","Distance city", 
                                      "Dist public land","Dist land trust", 
-                                     "Dist road", "Dist GAP", "Income 2009", "Pop change"),
+                                     "Dist road", "Dist GAP", "Income 2009", "Pop change", "Value"),
                            ncol = 3, nrow = 3)
 match.plots
 
@@ -374,57 +396,12 @@ panel$flowAcc.std = scale(panel$flowAcc)
 panel$slope.std = scale(panel$slope)
 panel$spei.std = scale(panel$spei)
 
-## explore for easements w positive and negative effects.
-panel.ce = panel %>% 
-  filter(CE == 1 & post ==1)
-
-#ggplot(data = panel.ce, mapping = aes(x = year, y = mesic09)) +
-#  geom_boxplot()+
-#  geom_point(mapping = aes(x = year, y = spei.std))
-
-plot(panel.ce$year, panel.ce$mesic09, main = "Treated")
-
-panel.NOce = panel %>% 
-  filter(CE == 0)
-
-plot(panel.NOce$year, panel.NOce$mesic09, main = "Control")
-
-panel.ce.pre = panel %>%
-  filter(CE ==1 & post == 0)
-
-plot(panel.ce.pre$year, panel.ce.pre$mesic09, main = "Not yet treated")
-
-panel.NOce.ANDpre = panel %>%
-  filter(post == 0)
-
-plot(panel.NOce.ANDpre$year, panel.NOce.ANDpre$mesic09, main = "Control or not yet treated")
-
-## sort the CE df based on mesic change and plot 5 examples of high and low change
-high.change = c(21505, 23329, 29430, 24995, 25595)
-low.change = c(29138, 21884, 23711, 23198, 26555)
-
-high.sbst = subset(panel%>%filter(CE == 1), system.index %in% high.change)
-low.sbst = subset(panel%>%filter(CE == 1), system.index %in% low.change)
-
-## plot these
-gg.high = ggplot(high.sbst, mapping = aes(x = year, y = mesic09, color = as.factor(system.index))) +
-  geom_point() +
-  geom_line(aes(group = as.factor(system.index))) +
-  geom_vline(aes(xintercept = as.factor(high.sbst$year_est), color = as.factor(system.index)))
-  
-gg.high + ggtitle("Postive mesic veg change")
-
-gg.low = ggplot(low.sbst, mapping = aes(x = year, y = mesic09, color = as.factor(system.index))) +
-  geom_point() +
-  geom_line(aes(group = as.factor(system.index))) +
-  geom_vline(aes(xintercept = as.factor(low.sbst$year_est), color = as.factor(system.index)))
-
-gg.low + ggtitle("Negative mesic veg change")
 
 ## Priors
 #priors.full = get_prior(outcome ~ CE*post + elevation.std + flowAcc.std + slope.std 
 priors.full = get_prior(outcome ~ CE*post + flowAcc.std + slope.std 
                         + spei.std +  (1|year) + (1 |huc12),
+                        #+ spei.std +  year + huc12, #fixed effects
                         #+ spei.std +  (1|year) + (1 |huc4),
                         data = panel, family = 'beta')
 
@@ -439,6 +416,7 @@ panel.samp = panel %>% sample_frac(0.2)
 ## Choose one year - am I capturing effect and spillovers
 #did.ce.full <- brm(outcome ~ CE*post + elevation.std + flowAcc.std + slope.std + spei.std +  (1|year) + (1 |huc12),
 did.ce.full <- brm(outcome ~ CE*post + flowAcc.std + slope.std + spei.std +  (1|year) + (1 |huc12),
+#did.ce.full <- brm(outcome ~ CE*post + flowAcc.std + slope.std + spei.std + year + huc12, #fixed effects
 #did.ce.full <- brm(outcome ~ CE*post + elevation.std + flowAcc.std + slope.std + spei.std +  (1|year) + (1 |huc4),
               data = panel.samp,
               #family='beta',
@@ -448,7 +426,7 @@ did.ce.full <- brm(outcome ~ CE*post + flowAcc.std + slope.std + spei.std +  (1|
               cores=4,
               #chains = 4, ## lower to trial
               chains = 4, ## lower to trial
-              iter=2000 ## lower to trial
+              iter=8000 ## lower to trial
 )
 
 summary(did.ce.full)
@@ -459,15 +437,5 @@ pp_check(did.ce.full)
 
 r2 =  bayes_R2(did.ce.full)
 r2
-save.image(file = "didPrivateMatchNOelev.RData")
-
-### k fold cross validation
-#fit.val = kfold(did.ce.full, save_fits = T, chains = 1)# default K = 10
-#predict.val = kfold_predict(fit.val, method = "predict")
-#MAE = function(y, yrep){
-#	yrep.mean = colMeans(yrep)
-#	return(mean(abs(yrep.mean - y)))}
-# 
-#mae = MAE(predict.val$y, predict.val$yrep)
-#print('MAE = ', mae)
+save.image(file = "didPrivateMatch8k.RData")
 
